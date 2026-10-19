@@ -1,0 +1,6 @@
+/out/
+*.o
+*.elf
+*.img
+*.bin
+__pycache__/
