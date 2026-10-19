@@ -1,3 +1,5 @@
+> **Work in progress / 作業中:** Experimental XNU port for Benesse TAB-A04-BR3 (MT8167). XNU entry has been observed, but the device currently watchdog-reboots; a working OS is not available.
+
 # TAB-A04-BR3 XNU boot shim
 
 First stage: a position-independent Cortex-A35 diagnostic payload entered by
