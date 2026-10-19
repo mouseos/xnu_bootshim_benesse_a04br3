@@ -102,6 +102,10 @@ class HandoffTests(unittest.TestCase):
         tree, end = parse(output.raw[:size]); self.assertEqual(end, size)
         self.assertEqual(tree['model'], b'Benesse TAB-A04-BR3\0')
         chosen, cpus, arm_io = tree['children']
+        child, parent, span = struct.unpack('<3Q', arm_io['ranges'])
+        reg, length = struct.unpack('<2Q', arm_io['children'][0]['reg'])
+        self.assertEqual(parent + reg - child, 0x11005000)
+        self.assertLessEqual(reg + length, child + span)
         self.assertEqual(struct.unpack('<Q', chosen['dram-base'])[0], 0x60000000)
         self.assertEqual(struct.unpack('<I', cpus['children'][0]['timebase-frequency'])[0], 13000000)
         for capacity in (0, 1, size - 1):
