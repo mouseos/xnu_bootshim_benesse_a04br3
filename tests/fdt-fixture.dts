@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+/dts-v1/;
+/memreserve/ 0x43000000 0x30000;
+/ {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    memory@40000000 {
+        device_type = "memory";
+        reg = <0 0x40000000 0 0x40000000>, <0 0x80000000 0 0x3f9c0000>;
+    };
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+        ramoops@44410000 { reg = <0 0x44410000 0 0xe0000>; no-map; };
+    };
+    chosen {
+        linux,initrd-start = <0 0x47000000>;
+        linux,initrd-end = <0 0x47001000>;
+    };
+};

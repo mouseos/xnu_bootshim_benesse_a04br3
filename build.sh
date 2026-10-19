@@ -10,11 +10,12 @@ flags=(-O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align
        -mcpu=cortex-a35 -Wall -Wextra -Werror)
 "${prefix}gcc" "${flags[@]}" -c "$src/start.S" -o "$out/start.o"
 "${prefix}gcc" "${flags[@]}" -c "$src/shim.c" -o "$out/shim.o"
-if "${prefix}readelf" -r "$out/shim.o" | grep -q 'R_AARCH64_ABS'; then
+"${prefix}gcc" "${flags[@]}" -c "$src/fdt.c" -o "$out/fdt.o"
+if "${prefix}readelf" -r "$out/shim.o" "$out/fdt.o" | grep -q 'R_AARCH64_ABS'; then
     echo 'Absolute C relocation is incompatible with a relocated shim' >&2; exit 1
 fi
 "${prefix}gcc" "${flags[@]}" -static -T "$src/shim.ld" -Wl,--build-id=none \
-    -Wl,-N "$out/start.o" "$out/shim.o" -o "$out/shim.elf"
+    -Wl,-N "$out/start.o" "$out/shim.o" "$out/fdt.o" -o "$out/shim.elf"
 "${prefix}objcopy" -O binary "$out/shim.elf" "$out/Image"
 "${prefix}nm" "$out/shim.elf" > "$out/symbols.txt"
 python3 - "$out" <<'PY'
