@@ -45,7 +45,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     if ((seed_bytes && (!seed || seed_bytes != 64)) || (!seed_bytes && seed)) return 0;
     struct writer w = { buffer, 0, capacity, 0 };
     uint64_t range[2] = {p->phys_base, p->kernel_end_pa - p->phys_base};
-    node(&w, 6, 3);
+    node(&w, 6, 4);
     text(&w, "name", "device-tree");
     text(&w, "device_type", "device-tree");
     static const char compatible[] = "benesse,a04br3\0mediatek,mt8167";
@@ -78,6 +78,10 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     text(&w, "name", "uart0"); text(&w, "device_type", "serial");
     text(&w, "compatible", "mediatek,mt6577-uart");
     uint64_t uart[2] = {0x01005000, 0x1000}; prop(&w, "reg", uart, sizeof(uart));
+    /* pmap_compute_max_asids requires /defaults. An absent override selects
+     * XNU's MAX_ASIDS, so do not invent a board-specific ASID count. */
+    node(&w, 1, 0);
+    text(&w, "name", "defaults");
     return w.error ? 0 : w.used;
 }
 

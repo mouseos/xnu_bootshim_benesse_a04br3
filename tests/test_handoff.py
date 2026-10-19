@@ -101,7 +101,9 @@ class HandoffTests(unittest.TestCase):
             return node, at
         tree, end = parse(output.raw[:size]); self.assertEqual(end, size)
         self.assertEqual(tree['model'], b'Benesse TAB-A04-BR3\0')
-        chosen, cpus, arm_io = tree['children']
+        chosen, cpus, arm_io, defaults = tree['children']
+        self.assertEqual(defaults['name'], b'defaults\0')
+        self.assertNotIn('pmap-max-asids', defaults)
         child, parent, span = struct.unpack('<3Q', arm_io['ranges'])
         reg, length = struct.unpack('<2Q', arm_io['children'][0]['reg'])
         self.assertEqual(parent + reg - child, 0x11005000)
