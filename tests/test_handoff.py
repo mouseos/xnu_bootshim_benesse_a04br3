@@ -62,6 +62,12 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual((plan.entry, plan.adt, plan.args, plan.top),
                          (0x61004000, 0x61008000, 0x6100c000, 0x61010000))
 
+    def test_kernel_outside_39_bit_bootstrap_range_rejected(self):
+        bad = bytearray(payload())
+        struct.pack_into('<Q', bad, 16, 0xfffffe0006000000)
+        struct.pack_into('<Q', bad, 40, 0xfffffe0007004000)
+        self.assertNotEqual(self.validate(bytes(bad))[0], 0)
+
     def test_reserved_and_unknown_memory_rejected(self):
         f = self.fdt(); f.reserved[0].base = 0x61000000
         self.assertNotEqual(self.validate(payload(), f)[0], 0)

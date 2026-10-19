@@ -41,7 +41,7 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
         p->data_offset > length || (p->data_offset & 7) ||
         (p->virt_base & 0x1ffffff) || (p->phys_base & 0x1ffffff) ||
         !p->mem_size || p->mem_size > 0x40000000 || (p->mem_size & (XNU_PAGE - 1)) ||
-        p->virt_base < 0xffff000000000000ULL || p->virt_base + p->mem_size < p->virt_base ||
+        p->virt_base < 0xffffff8000000000ULL || p->virt_base + p->mem_size < p->virt_base ||
         !covered(p->phys_base, p->mem_size, fdt) ||
         !covered(payload_pa, length, fdt) ||
         overlap(p->phys_base, p->mem_size, payload_pa, length) ||
