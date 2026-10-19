@@ -12,8 +12,8 @@ Build on Linux with Python 3 and the GNU AArch64 toolchain:
 ```
 
 Outputs go to `../out/bootshim` (override with `SHIM_OUT`). Wrap `Image` with
-the sibling device repository's boot-image packager and a locally supplied
-working boot image. No firmware dumps are stored here.
+the sibling device repository's source-built DTB and boot-image packager.
+No local boot image, firmware dump or generated DTB is required as an input.
 
 Hardware acceptance: the existing UART capture must contain
 `XNU_A04BR3_SHIM_DIAGNOSTIC_V1`, the register values and
