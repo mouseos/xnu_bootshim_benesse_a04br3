@@ -5,12 +5,16 @@ the stock MediaTek LK. It supports EL1/EL2 entry, installs the corresponding
 exception vectors and reports CPU feature registers over the inherited UART.
 The second diagnostic stage drops from EL2 to EL1h with MMU/cache off, enables
 EL1 architectural counter access, and inspects the LK-provided FDT for DRAM,
-reserved ranges and initrd placement. It then stops without loading XNU.
+reserved ranges and initrd placement. If no XNU payload is supplied, it stops
+after diagnostics. With a valid raw `A04XNU01` initrd payload it loads the
+source-built kernel, creates Apple boot arguments and device tree, and jumps
+to the Mach-O entry at EL1.
 It performs no storage writes or watchdog changes.
 
-The EL2 stage was verified on TAB-A04-BR3. The EL1/FDT stage requires its own
-hardware verification. The parser only reports ranges; its output is not yet
-an allocator or a validated XNU memory map.
+The EL2 and EL1/FDT diagnostic stages were verified on TAB-A04-BR3.
+The new kernel handoff has host validation only and awaits hardware verification.
+DRAM ranges alone are not allocation permission: the loader also excludes FDT
+reservations, its own code/stack, the FDT and the incoming payload.
 
 Build on Linux with Python 3 and the GNU AArch64 toolchain:
 
@@ -30,11 +34,31 @@ FDT memory/reserved information, and `SHIM_EL1_DIAGNOSTIC_DONE`.
 A successful host build is not a successful device boot.
 The inherited watchdog may reset the device after the diagnostic stops.
 
-See [CREDITS.md](CREDITS.md) for source provenance. Future work adds the
-LK-to-XNU handoff without tying this loader to iOS or macOS userland.
+See [CREDITS.md](CREDITS.md) for source provenance. This loader is independent
+of the intended iOS or macOS userland. Timer, interrupt and storage drivers in
+the kernel remain separate work.
 
 Host parser tests (requires a C compiler, dtc and Python):
 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## Source-built kernel handoff
+
+The device repository's `tools/payload.py` creates the raw payload from a
+plain ARM64 executable Mach-O built from the kernel repository. No Apple
+userland image is an input. Maximum input size is 128 MiB; the device GPT and
+image configuration must provide enough space before flashing a larger image.
+
+`handoff.h` defines the versioned wire header and segment descriptors. All
+input bounds, destination windows, reservations, segment overlap and entry
+placement are checked before copying. Segment file bytes are copied and BSS
+is zeroed. `adt.c` serializes the board identity, boot CPU, UART and selected
+memory window. No entropy or additional CPU support is fabricated. The XNU
+boot_args structure is checked for the expected field offsets at compile time.
+
+Hardware acceptance for this new stage requires the kernel's own
+`XNU_A04BR3_KERNEL_ENTRY` UART marker after `XNU_HANDOFF_JUMP`. A shim jump
+message alone does not establish kernel execution. Kernel entry does not
+establish working memory management, interrupts, storage or userland.

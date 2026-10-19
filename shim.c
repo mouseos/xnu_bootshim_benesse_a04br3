@@ -4,6 +4,7 @@
  */
 #include <stdint.h>
 #include "fdt.h"
+#include "handoff.h"
 
 __attribute__((noreturn)) void enter_el1(uint64_t dtb);
 static struct fdt_info observed_fdt;
@@ -42,6 +43,9 @@ static void value(const char *label, uint64_t v)
     }
     puts_uart("\n");
 }
+
+void handoff_trace(const char *label, uint64_t v) { value(label, v); }
+void handoff_message(const char *message) { puts_uart(message); }
 
 __attribute__((noreturn)) static void stop(void)
 {
@@ -139,5 +143,8 @@ __attribute__((noreturn)) void shim_el1(uint64_t dtb)
     value("FDT_initrd_start", observed_fdt.initrd_start);
     value("FDT_initrd_end", observed_fdt.initrd_end);
     puts_uart("SHIM_EL1_DIAGNOSTIC_DONE\n");
+    const char *result = handoff_boot(&observed_fdt, dtb);
+    puts_uart(result);
+    puts_uart("\n");
     stop();
 }
