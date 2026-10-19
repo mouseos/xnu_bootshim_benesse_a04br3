@@ -39,9 +39,10 @@ static void word(struct writer *w, const char *key, uint32_t value)
 {
     prop(w, key, &value, sizeof(value));
 }
-size_t xnu_make_adt(void *buffer, size_t capacity, const struct xnu_payload *p,
-                    uint32_t timebase)
+size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_payload *p,
+                           uint32_t timebase, const unsigned char *seed, size_t seed_bytes)
 {
+    if ((seed_bytes && (!seed || seed_bytes != 64)) || (!seed_bytes && seed)) return 0;
     struct writer w = { buffer, 0, capacity, 0 };
     uint64_t range[2] = {p->phys_base, p->kernel_end_pa - p->phys_base};
     node(&w, 6, 3);
@@ -51,8 +52,9 @@ size_t xnu_make_adt(void *buffer, size_t capacity, const struct xnu_payload *p,
     prop(&w, "compatible", compatible, sizeof(compatible));
     text(&w, "model", "Benesse TAB-A04-BR3");
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
-    node(&w, 4, 1);
+    node(&w, 4 + (seed_bytes != 0), 1);
     text(&w, "name", "chosen");
+    if (seed_bytes) prop(&w, "random-seed", seed, (uint32_t)seed_bytes);
     prop(&w, "dram-base", &p->phys_base, 8);
     prop(&w, "dram-size", &p->mem_size, 8);
     word(&w, "debug-enabled", 1);
@@ -77,4 +79,10 @@ size_t xnu_make_adt(void *buffer, size_t capacity, const struct xnu_payload *p,
     text(&w, "compatible", "mediatek,mt6577-uart");
     uint64_t uart[2] = {0x01005000, 0x1000}; prop(&w, "reg", uart, sizeof(uart));
     return w.error ? 0 : w.used;
+}
+
+size_t xnu_make_adt(void *buffer, size_t capacity, const struct xnu_payload *p,
+                    uint32_t timebase)
+{
+    return xnu_make_adt_seeded(buffer, capacity, p, timebase, 0, 0);
 }

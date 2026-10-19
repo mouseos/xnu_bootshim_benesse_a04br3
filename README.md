@@ -64,3 +64,10 @@ Hardware acceptance for this new stage requires the kernel's own
 `XNU_A04BR3_KERNEL_ENTRY` UART marker after `XNU_HANDOFF_JUMP`. A shim jump
 message alone does not establish kernel execution. Kernel entry does not
 establish working memory management, interrupts, storage or userland.
+
+The kernel handoff now requests a fresh 64-byte seed from MT8167 TRNG on each
+boot and publishes `/chosen/random-seed`. No seed is stored in the image or
+logs. The loader restores the TRNG enable and clock-gate state and clears its
+copies after ADT transfer. A timeout, inaccessible device or stuck output fails
+closed with an explicit marker. This hardware path is awaiting validation and
+is not a certification of the vendor RNG's statistical quality.

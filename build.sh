@@ -13,11 +13,12 @@ flags=(-O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align
 "${prefix}gcc" "${flags[@]}" -c "$src/fdt.c" -o "$out/fdt.o"
 "${prefix}gcc" "${flags[@]}" -c "$src/adt.c" -o "$out/adt.o"
 "${prefix}gcc" "${flags[@]}" -c "$src/handoff.c" -o "$out/handoff.o"
-if "${prefix}readelf" -r "$out/shim.o" "$out/fdt.o" "$out/adt.o" "$out/handoff.o" | grep -q 'R_AARCH64_ABS'; then
+"${prefix}gcc" "${flags[@]}" -c "$src/rng.c" -o "$out/rng.o"
+if "${prefix}readelf" -r "$out/shim.o" "$out/fdt.o" "$out/adt.o" "$out/handoff.o" "$out/rng.o" | grep -q 'R_AARCH64_ABS'; then
     echo 'Absolute C relocation is incompatible with a relocated shim' >&2; exit 1
 fi
 "${prefix}gcc" "${flags[@]}" -static -T "$src/shim.ld" -Wl,--build-id=none \
-    -Wl,-N "$out/start.o" "$out/shim.o" "$out/fdt.o" "$out/adt.o" "$out/handoff.o" -o "$out/shim.elf"
+    -Wl,-N "$out/start.o" "$out/shim.o" "$out/fdt.o" "$out/adt.o" "$out/handoff.o" "$out/rng.o" -o "$out/shim.elf"
 "${prefix}objcopy" -O binary "$out/shim.elf" "$out/Image"
 "${prefix}nm" "$out/shim.elf" > "$out/symbols.txt"
 python3 - "$out" <<'PY'

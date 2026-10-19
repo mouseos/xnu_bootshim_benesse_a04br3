@@ -108,7 +108,17 @@ const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa)
     __asm__ volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(timebase));
     if (el != 4 || (sctlr & 0x1005) || timebase > 0xffffffff) return "XNU_HANDOFF_CPU_STATE_REJECTED";
-    size_t adt_size = xnu_make_adt(adt_buffer, sizeof(adt_buffer), p, (uint32_t)timebase);
+    unsigned char seed[64];
+    handoff_message("XNU_TRNG_BEGIN\n");
+    int rng_status = mt8167_random_seed(seed, (uint32_t)timebase);
+    if (rng_status) {
+        handoff_trace("XNU_TRNG_ERROR", (uint64_t)(int64_t)rng_status);
+        return "XNU_BOOT_ENTROPY_UNAVAILABLE";
+    }
+    handoff_message("XNU_TRNG_READY\n");
+    size_t adt_size = xnu_make_adt_seeded(adt_buffer, sizeof(adt_buffer), p,
+                                        (uint32_t)timebase, seed, sizeof(seed));
+    zero_bytes((uintptr_t)seed, sizeof(seed));
     if (!adt_size) return "XNU_ADT_BUILD_FAILED";
     handoff_trace("XNU_physBase", p->phys_base);
     handoff_trace("XNU_memSize", p->mem_size);
@@ -124,6 +134,7 @@ const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa)
     }
     zero_bytes(plan.adt_pa, 2 * XNU_PAGE);
     copy_bytes(plan.adt_pa, adt_buffer, adt_size);
+    zero_bytes((uintptr_t)adt_buffer, sizeof(adt_buffer));
     struct xnu_boot_args ba;
     zero_bytes((uintptr_t)&ba, sizeof(ba));
     ba.revision = ba.version = 2;

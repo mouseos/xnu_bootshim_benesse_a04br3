@@ -10,3 +10,13 @@ Boot argument and Apple device-tree ABI reference: Apple's XNU release
 `xnu-8796.141.3`, https://github.com/apple-oss-distributions/xnu/tree/xnu-8796.141.3
 (`pexpert/pexpert/arm/boot.h` and platform device-tree interfaces). The loader,
 validation and serializer implementations here are original port source.
+
+MT8167 hardware RNG facts: MediaTek MT8167 LK `mt_reg_base.h` (TRNG base
+0x1020c000), and MediaTek clock driver `clk-mt8167.c` (topckgen 0x10000000,
+TRNG gate bit 5 in group 2). Public board-source reference:
+https://github.com/s1204IT/CT3_GPL_LGPL_Src . Register control/ready/data layout
+reference: Linux `drivers/char/hw_random/mtk-rng.c`, also present at
+https://github.com/mouseos/android_kernel_benesse_TAB-A04-BR3 .
+`rng.c` is original source, not an imported Linux driver. Hardware availability
+and entropy quality still require runtime validation; failure does not produce
+a synthetic seed.

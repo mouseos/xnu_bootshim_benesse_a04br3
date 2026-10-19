@@ -108,6 +108,17 @@ class HandoffTests(unittest.TestCase):
         self.assertLessEqual(reg + length, child + span)
         self.assertEqual(struct.unpack('<Q', chosen['dram-base'])[0], 0x60000000)
         self.assertEqual(struct.unpack('<I', cpus['children'][0]['timebase-frequency'])[0], 13000000)
+        # Synthetic host fixture only: no such seed is built into boot images.
+        seeded = self.lib.xnu_make_adt_seeded
+        seeded.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p,
+                           ctypes.c_uint32, ctypes.c_void_p, ctypes.c_size_t]
+        seeded.restype = ctypes.c_size_t
+        seed = ctypes.create_string_buffer(bytes(range(64)))
+        seeded_size = seeded(output, 16384, source, 13000000, seed, 64)
+        seeded_tree, seeded_end = parse(output.raw[:seeded_size])
+        self.assertEqual(seeded_end, seeded_size)
+        self.assertEqual(seeded_tree['children'][0]['random-seed'], bytes(range(64)))
+        self.assertEqual(seeded(output, 16384, source, 13000000, seed, 63), 0)
         for capacity in (0, 1, size - 1):
             canary = ctypes.create_string_buffer(b'\xa5' * 16384)
             self.assertEqual(self.lib.xnu_make_adt(canary, capacity, source, 13000000), 0)
