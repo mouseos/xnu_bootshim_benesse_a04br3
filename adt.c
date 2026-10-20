@@ -58,10 +58,10 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "dram-base", &p->phys_base, 8);
     prop(&w, "dram-size", &p->mem_size, 8);
     word(&w, "debug-enabled", 1);
-    node(&w, 2 + (p->version == 2), 0);
+    node(&w, 2 + (p->version >= 2), 0);
     text(&w, "name", "memory-map"); prop(&w, "Kernel-A04BR3", range, sizeof(range));
     /* v2's final validated load segment is the root memory device. */
-    if (p->version == 2) {
+    if (p->version >= 2) {
         const struct xnu_segment *segments = (const void *)((const unsigned char *)p + p->segments_offset);
         const struct xnu_segment *rd = &segments[p->segment_count - 1];
         uint64_t ramdisk[2] = {rd->physical, rd->memory_size};

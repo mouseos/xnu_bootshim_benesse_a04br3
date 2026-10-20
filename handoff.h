@@ -34,6 +34,7 @@ struct xnu_segment { uint64_t physical, memory_size, file_offset, file_size; };
 _Static_assert(sizeof(struct xnu_payload) == 688, "Payload header ABI");
 struct handoff_plan { uint64_t adt_pa, args_pa, top, entry_pa; };
 /* No writes to the proposed destination until the complete plan is accepted. */
+int handoff_sparse(void *destination, const unsigned char *source, uint64_t length, uint64_t memory);
 int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
                      const struct fdt_info *fdt, uint64_t fdt_pa,
                      uint64_t shim_start, uint64_t shim_end, struct handoff_plan *plan);

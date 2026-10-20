@@ -76,3 +76,10 @@ Payload version 2 keeps the version 1 header and adds a final load segment
 for the root RAMDisk. The loader validates the segment and reserves it below
 ADT/boot_args, then publishes its physical address and padded length as
 `/chosen/memory-map/RAMDisk`. Version 1 without a root disk remains supported.
+
+Version 3 encodes only the final RAMDisk segment as little-endian 32-bit
+runs: bit 31 selects zero fill, bits 30..0 give a nonzero length; literal
+runs carry that many following bytes. The entire stream must decode to the
+segment memory size before the loader writes any destination. Kernel
+segments keep their version 1 layout. This stores sparse HFS volumes within
+the existing boot partition without modifying GPT.

@@ -62,6 +62,16 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual((plan.entry, plan.adt, plan.args, plan.top),
                          (0x61004000, 0x61008000, 0x6100c000, 0x61010000))
 
+    def test_sparse_decoder_roundtrip_and_rejection(self):
+        source = struct.pack('<I', 3) + b'ABC' + struct.pack('<I', 0x80000020) + struct.pack('<I', 2) + b'DE'
+        f = self.lib.handoff_sparse
+        f.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint64]
+        target = ctypes.create_string_buffer(37)
+        self.assertEqual(f(target, source, len(source), 37), 0)
+        self.assertEqual(target.raw, b'ABC' + bytes(32) + b'DE')
+        for bad, size in ((source[:-1], 37), (source, 36), (source, 38), (bytes(4), 0), (b'X', 1)):
+            self.assertNotEqual(f(None, bad, len(bad), size), 0)
+
     def test_v2_root_ramdisk_plan_and_adt(self):
         blob = bytearray(payload())
         struct.pack_into('<II', blob, 8, 2, 2)

@@ -22,6 +22,30 @@ static int covered(uint64_t start, uint64_t size, const struct fdt_info *fdt)
         if (inside(start, size, fdt->memory[i].base, fdt->memory[i].size)) return 1;
     return 0;
 }
+/* Version 3 stores only the final RAMDisk as bounded literal/zero runs.
+ * Validate the complete stream before any destination write. */
+int handoff_sparse(void *destination, const unsigned char *source, uint64_t length, uint64_t memory)
+{
+    unsigned char *out = destination;
+    uint64_t at = 0, produced = 0;
+    while (at < length) {
+        if (length - at < 4) return -1;
+        uint32_t tag = (uint32_t)source[at] | ((uint32_t)source[at+1] << 8) |
+            ((uint32_t)source[at+2] << 16) | ((uint32_t)source[at+3] << 24);
+        at += 4;
+        uint32_t count = tag & 0x7fffffffU;
+        if (!count || count > memory - produced) return -1;
+        if (!(tag & 0x80000000U) && count > length - at) return -1;
+        if (out) {
+            for (uint32_t j = 0; j < count; j++)
+                out[produced+j] = (tag & 0x80000000U) ? 0 : source[at+j];
+        }
+        produced += count;
+        if (!(tag & 0x80000000U)) at += count;
+    }
+    return produced == memory ? 0 : -1;
+}
+
 int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
                      const struct fdt_info *fdt, uint64_t fdt_pa,
                      uint64_t shim_start, uint64_t shim_end, struct handoff_plan *plan)
@@ -33,8 +57,8 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
     const struct xnu_payload *p = payload;
     static const char magic[] = "A04XNU01";
     for (unsigned i = 0; i < 8; i++) if (p->magic[i] != magic[i]) return -1;
-    if ((p->version != 1 && p->version != 2) ||
-        (p->version == 2 && p->segment_count < 2) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
+    if ((p->version != 1 && p->version != 2 && p->version != 3) ||
+        (p->version >= 2 && p->segment_count < 2) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
         p->total_size != length || p->segments_offset < sizeof(*p) ||
         (p->segments_offset & 7) || p->segments_offset > length ||
         p->segment_count * sizeof(struct xnu_segment) > length - p->segments_offset ||
@@ -68,11 +92,16 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
         if (inside(plan->entry_pa, 4, s->physical, s->file_size)) entry_found++;
         if (s->physical + s->memory_size > end) end = s->physical + s->memory_size;
     }
-    if (p->version == 2) {
+    if (p->version >= 2) {
         const struct xnu_segment *rd = &segments[p->segment_count - 1];
         if ((rd->physical & (XNU_PAGE - 1)) ||
             (rd->memory_size & (XNU_PAGE - 1)) || !rd->file_size ||
             inside(plan->entry_pa, 4, rd->physical, rd->memory_size)) return -1;
+    }
+    if (p->version == 3) {
+        const struct xnu_segment *rd = &segments[p->segment_count - 1];
+        if (handoff_sparse(0, (const unsigned char *)p + rd->file_offset,
+                           rd->file_size, rd->memory_size)) return -1;
     }
     if (entry_found != 1 || aligned(end) != p->kernel_end_pa) return -1;
     plan->adt_pa = aligned(end);
@@ -139,6 +168,12 @@ const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa)
     const struct xnu_segment *segments = (const void *)((const unsigned char *)p + p->segments_offset);
     for (unsigned i = 0; i < p->segment_count; i++) {
         const struct xnu_segment *s = &segments[i];
+        if (p->version == 3 && i + 1 == p->segment_count) {
+            if (handoff_sparse((void *)(uintptr_t)s->physical,
+                    (const unsigned char *)p + s->file_offset, s->file_size, s->memory_size))
+                return "XNU_RAMDISK_DECODE_FAILED";
+            continue;
+        }
         copy_bytes(s->physical, (const unsigned char *)p + s->file_offset, s->file_size);
         zero_bytes(s->physical + s->file_size, s->memory_size - s->file_size);
     }
