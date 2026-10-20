@@ -42,3 +42,7 @@ DisplayInitDxe and a04br3.dsc in the existing local EDK2 port. It only
 writes a 24-row RGB marker inside the FDT-reserved framebuffer and supplies
 Apple boot_args Video; it does not initialize DSI, implement IOSurface or
 claim SpringBoard output.
+
+Correction after reading SimpleFbDxe: PcdMipiFrameBufferLayers=3 is
+an inclusive upper index (four surfaces); every diagnostic color now
+has alpha=0xff. The reserved extent validation covers all four surfaces.

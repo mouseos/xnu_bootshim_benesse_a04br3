@@ -12,7 +12,7 @@ static int inside(uint64_t start, uint64_t size, uint64_t base, uint64_t span)
 }
 /* LK scanout geometry follows the working A04BR3 EDK2 DisplayInitDxe.
  * Publish it only for the explicit physical-display test and only when
- * FDT protects the complete three-page scanout buffer from managed RAM. */
+ * FDT protects the complete four-buffer scanout buffer from managed RAM. */
 int handoff_video_setup(struct xnu_video *video, const struct fdt_info *fdt,
                         const struct xnu_payload *p)
 {
@@ -26,7 +26,7 @@ int handoff_video_setup(struct xnu_video *video, const struct fdt_info *fdt,
         if (!flag[j] && (!p->command_line[i+j] || p->command_line[i+j] == ' ')) enabled = 1;
     }
     if (!enabled) return 0;
-    const uint64_t base = 0xbe9c0000, bytes = 800ULL * 1280 * 4 * 3;
+    const uint64_t base = 0xbe9c0000, bytes = 800ULL * 1280 * 4 * 4;
     int reserved = 0;
     for (unsigned i = 0; i < fdt->reserved_count; i++) {
         if (inside(base, bytes, fdt->reserved[i].base, fdt->reserved[i].size)) reserved = 1;
@@ -224,15 +224,15 @@ const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa)
     ba.mem_size = ba.mem_size_actual = p->mem_size;
     ba.top_of_kernel_data = plan.top;
     if (handoff_video_setup(&ba.video, fdt, p)) {
-        /* Small RGB bands on all three LK pages identify this test without
+        /* Small RGB bands on all four LK buffers identify this test without
          * reprogramming clocks, panel, DSI or overlay registers. */
-        for (unsigned page = 0; page < 3; page++) {
+        for (unsigned page = 0; page < 4; page++) {
             volatile uint32_t *pixels = (volatile uint32_t *)(uintptr_t)
                 (ba.video.base + page * 800UL * 1280 * 4);
             for (unsigned y = 0; y < 24; y++) {
                 for (unsigned x = 0; x < 800; x++) {
-                    pixels[y * 800 + x] = x < 267 ? 0x00ff0000 :
-                        x < 534 ? 0x0000ff00 : 0x000000ff;
+                    pixels[y * 800 + x] = x < 267 ? 0xffff0000 :
+                        x < 534 ? 0xff00ff00 : 0xff0000ff;
                 }
             }
         }

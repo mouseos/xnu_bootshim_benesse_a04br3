@@ -29,10 +29,10 @@ class VideoTests(unittest.TestCase):
         r,v=self.setup('-v a04br3.display_probe=1 cpus=1')
         self.assertEqual(r,1)
         self.assertEqual((v.base,v.rowbytes,v.width,v.height,v.depth),(0xbe9c0000,3200,800,1280,32))
-        self.assertLessEqual(v.rowbytes*v.height*3,0x1000000)
+        self.assertLessEqual(v.rowbytes*v.height*4,0x1000000)
 
     def test_opt_in_and_protected_extent(self):
-        for flag,reserved,size in [('-v',True,0x1000000),('a04br3.display_probe=10',True,0x1000000),('xa04br3.display_probe=1',True,0x1000000),('a04br3.display_probe=1',False,0),('a04br3.display_probe=1',True,800*1280*4)]:
+        for flag,reserved,size in [('-v',True,0x1000000),('a04br3.display_probe=10',True,0x1000000),('xa04br3.display_probe=1',True,0x1000000),('a04br3.display_probe=1',False,0),('a04br3.display_probe=1',True,800*1280*4),('a04br3.display_probe=1',True,800*1280*4*3)]:
             with self.subTest(flag=flag,reserved=reserved,size=size):
                 r,v=self.setup(flag,reserved,size)
                 self.assertEqual(r,0);self.assertEqual(v.base,0)
