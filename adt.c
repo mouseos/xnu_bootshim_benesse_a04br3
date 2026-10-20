@@ -68,7 +68,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "compatible", cpu, sizeof(cpu)); word(&w, "reg", 0);
     text(&w, "state", "running"); word(&w, "timebase-frequency", timebase);
     word(&w, "cpu-id", 0); word(&w, "cluster-id", 0);
-    node(&w, 6, 1);
+    node(&w, 6, 2);
     text(&w, "name", "arm-io"); text(&w, "device_type", "soc");
     text(&w, "compatible", "mediatek,mt8167");
     uint64_t io_ranges[3] = {0, 0x10000000, 0x10000000};
@@ -78,6 +78,13 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     text(&w, "name", "uart0"); text(&w, "device_type", "serial");
     text(&w, "compatible", "mediatek,mt6577-uart");
     uint64_t uart[2] = {0x01005000, 0x1000}; prop(&w, "reg", uart, sizeof(uart));
+    node(&w, 5, 0);
+    text(&w, "name", "interrupt-controller");
+    text(&w, "compatible", "arm,gic-400");
+    text(&w, "interrupt-controller", "master");
+    uint64_t gic[4] = {0x00310000, 0x1000, 0x0032f000, 0x2000};
+    prop(&w, "reg", gic, sizeof(gic));
+    word(&w, "virtual-timer-intid", 27);
     /* pmap_compute_max_asids requires /defaults. An absent override selects
      * XNU's MAX_ASIDS, so do not invent a board-specific ASID count. */
     node(&w, 1, 0);

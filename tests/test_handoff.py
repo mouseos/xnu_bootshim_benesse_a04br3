@@ -108,6 +108,11 @@ class HandoffTests(unittest.TestCase):
         reg, length = struct.unpack('<2Q', arm_io['children'][0]['reg'])
         self.assertEqual(parent + reg - child, 0x11005000)
         self.assertLessEqual(reg + length, child + span)
+        gic = arm_io['children'][1]
+        dist, dist_size, cpu_if, cpu_size = struct.unpack('<4Q', gic['reg'])
+        self.assertEqual((parent + dist, parent + cpu_if), (0x10310000, 0x1032f000))
+        self.assertEqual((dist_size, cpu_size), (0x1000, 0x2000))
+        self.assertEqual(struct.unpack('<I', gic['virtual-timer-intid'])[0], 27)
         self.assertEqual(struct.unpack('<Q', chosen['dram-base'])[0], 0x60000000)
         self.assertEqual(struct.unpack('<I', cpus['children'][0]['timebase-frequency'])[0], 13000000)
         # Synthetic host fixture only: no such seed is built into boot images.
