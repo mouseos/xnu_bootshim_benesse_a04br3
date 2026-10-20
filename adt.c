@@ -52,8 +52,13 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "compatible", compatible, sizeof(compatible));
     text(&w, "model", "Benesse TAB-A04-BR3");
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
-    node(&w, 4 + (seed_bytes != 0), 1);
+    node(&w, 5 + (seed_bytes != 0), 1);
     text(&w, "name", "chosen");
+    /* SHA-384("A04BR3 development boot namespace v1"). This names the
+     * unsealed development preboot namespace; it is not Apple secure boot.
+     * iOS mount needs this property even when no firmware bind is required. */
+    static const unsigned char development_manifest[48] = {0x06, 0xc2, 0x72, 0x0d, 0x73, 0x22, 0x16, 0x6d, 0x2d, 0x70, 0xfd, 0x97, 0xed, 0x5a, 0x8c, 0x56, 0x9a, 0xf4, 0x11, 0x58, 0x93, 0xe2, 0x03, 0x2d, 0xd8, 0x61, 0x2e, 0xb7, 0x6d, 0x6e, 0x79, 0xfe, 0x4a, 0x63, 0x83, 0xc1, 0x11, 0xdb, 0x2a, 0x61, 0xe1, 0xb2, 0x35, 0x8c, 0x2e, 0x94, 0x21, 0x93};
+    prop(&w, "boot-manifest-hash", development_manifest, sizeof(development_manifest));
     if (seed_bytes) prop(&w, "random-seed", seed, (uint32_t)seed_bytes);
     prop(&w, "dram-base", &p->phys_base, 8);
     prop(&w, "dram-size", &p->mem_size, 8);

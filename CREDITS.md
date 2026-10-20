@@ -20,3 +20,7 @@ https://github.com/mouseos/android_kernel_benesse_TAB-A04-BR3 .
 `rng.c` is original source, not an imported Linux driver. Hardware availability
 and entropy quality still require runtime validation; failure does not produce
 a synthetic seed.
+
+The development /chosen/boot-manifest-hash namespace follows the mount
+requirement documented by ios-sweet 0036 at fdad0de8dc0e75c5ea84762adc03f7232dc91f19.
+The value is A04BR3-specific synthetic development data, not an Apple manifest.

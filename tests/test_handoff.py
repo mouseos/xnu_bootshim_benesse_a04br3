@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 import ctypes
+import hashlib
 from pathlib import Path
 import struct
 import subprocess
@@ -55,6 +56,26 @@ class HandoffTests(unittest.TestCase):
                                            ctypes.byref(fdt), 0x4e000000, 0x40080000, 0x400a0000,
                                            ctypes.byref(plan))
         return result, plan
+
+    def test_development_preboot_namespace_is_in_chosen(self):
+        buf = ctypes.create_string_buffer(16384)
+        size = self.lib.xnu_make_adt(buf, len(buf), ctypes.create_string_buffer(payload()), 13000000)
+        data = buf.raw[:size]
+        def read_node(offset):
+            properties, children = struct.unpack_from('<II', data, offset); offset += 8
+            props = {}
+            for _ in range(properties):
+                name = data[offset:offset+32].split(b'\0')[0]
+                length = struct.unpack_from('<I', data, offset+32)[0]; offset += 36
+                props[name] = data[offset:offset+length]; offset += (length+3)&~3
+            nested = []
+            for _ in range(children):
+                child, offset = read_node(offset); nested.append(child)
+            return (props,nested),offset
+        tree, end = read_node(0)
+        self.assertEqual(end, size)
+        chosen = next(props for props,_ in tree[1] if props[b'name'] == b'chosen\0')
+        self.assertEqual(chosen[b'boot-manifest-hash'], hashlib.sha384(b'A04BR3 development boot namespace v1').digest())
 
     def test_plan_and_boot_args_reservation(self):
         result, plan = self.validate(payload())
