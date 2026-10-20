@@ -71,3 +71,8 @@ logs. The loader restores the TRNG enable and clock-gate state and clears its
 copies after ADT transfer. A timeout, inaccessible device or stuck output fails
 closed with an explicit marker. This hardware path is awaiting validation and
 is not a certification of the vendor RNG's statistical quality.
+
+Payload version 2 keeps the version 1 header and adds a final load segment
+for the root RAMDisk. The loader validates the segment and reserves it below
+ADT/boot_args, then publishes its physical address and padded length as
+`/chosen/memory-map/RAMDisk`. Version 1 without a root disk remains supported.

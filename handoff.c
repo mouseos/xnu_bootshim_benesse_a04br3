@@ -33,7 +33,8 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
     const struct xnu_payload *p = payload;
     static const char magic[] = "A04XNU01";
     for (unsigned i = 0; i < 8; i++) if (p->magic[i] != magic[i]) return -1;
-    if (p->version != 1 || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
+    if ((p->version != 1 && p->version != 2) ||
+        (p->version == 2 && p->segment_count < 2) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
         p->total_size != length || p->segments_offset < sizeof(*p) ||
         (p->segments_offset & 7) || p->segments_offset > length ||
         p->segment_count * sizeof(struct xnu_segment) > length - p->segments_offset ||
@@ -66,6 +67,12 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
             if (overlap(s->physical, s->memory_size, segments[j].physical, segments[j].memory_size)) return -1;
         if (inside(plan->entry_pa, 4, s->physical, s->file_size)) entry_found++;
         if (s->physical + s->memory_size > end) end = s->physical + s->memory_size;
+    }
+    if (p->version == 2) {
+        const struct xnu_segment *rd = &segments[p->segment_count - 1];
+        if ((rd->physical & (XNU_PAGE - 1)) ||
+            (rd->memory_size & (XNU_PAGE - 1)) || !rd->file_size ||
+            inside(plan->entry_pa, 4, rd->physical, rd->memory_size)) return -1;
     }
     if (entry_found != 1 || aligned(end) != p->kernel_end_pa) return -1;
     plan->adt_pa = aligned(end);

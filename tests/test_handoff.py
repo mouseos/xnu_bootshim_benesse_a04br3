@@ -62,6 +62,22 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual((plan.entry, plan.adt, plan.args, plan.top),
                          (0x61004000, 0x61008000, 0x6100c000, 0x61010000))
 
+    def test_v2_root_ramdisk_plan_and_adt(self):
+        blob = bytearray(payload())
+        struct.pack_into('<II', blob, 8, 2, 2)
+        struct.pack_into('<Q', blob, 48, 0x6100c000)
+        struct.pack_into('<4Q', blob, 720, 0x61008000, 0x4000, 1000, 24)
+        result, plan = self.validate(bytes(blob))
+        self.assertEqual(result, 0)
+        self.assertEqual(plan.adt, 0x6100c000)
+        buf = ctypes.create_string_buffer(16384)
+        n = self.lib.xnu_make_adt(buf, len(buf), ctypes.create_string_buffer(bytes(blob)), 13000000)
+        self.assertGreater(n, 0)
+        pos = buf.raw.index(b'RAMDisk')
+        self.assertEqual(struct.unpack_from('<2Q', buf.raw, pos + 36), (0x61008000, 0x4000))
+        struct.pack_into('<Q', blob, 720, 0x61008008)
+        self.assertNotEqual(self.validate(bytes(blob))[0], 0)
+
     def test_kernel_outside_39_bit_bootstrap_range_rejected(self):
         bad = bytearray(payload())
         struct.pack_into('<Q', bad, 16, 0xfffffe0006000000)
