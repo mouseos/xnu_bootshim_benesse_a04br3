@@ -57,6 +57,32 @@ class HandoffTests(unittest.TestCase):
                                            ctypes.byref(plan))
         return result, plan
 
+    def test_opt_in_cpu_nodes_preserve_flat_affinity_and_default(self):
+        for args, count in ((b'-v',1),(b'cpus=1',1),(b'cpus=2',2),(b'cpus=4',4),
+                            (b'cpus=20',1),(b'xcpus=4',1)):
+            blob=bytearray(payload());blob[80:688]=args.ljust(608,b'\0')
+            buf=ctypes.create_string_buffer(16384)
+            size=self.lib.xnu_make_adt(buf,len(buf),ctypes.create_string_buffer(bytes(blob)),13000000)
+            data=buf.raw[:size]
+            def read_node(offset):
+                n,c=struct.unpack_from('<II',data,offset);offset+=8;props={}
+                for _ in range(n):
+                    key=data[offset:offset+32].split(b'\0')[0]
+                    length=struct.unpack_from('<I',data,offset+32)[0];offset+=36
+                    props[key]=data[offset:offset+length];offset+=(length+3)&~3
+                children=[]
+                for _ in range(c):
+                    child,offset=read_node(offset);children.append(child)
+                return (props,children),offset
+            tree,end=read_node(0);self.assertEqual(end,size)
+            cpus=next(children for props,children in tree[1] if props[b'name']==b'cpus\0')
+            self.assertEqual(len(cpus),count)
+            for i,(props,children) in enumerate(cpus):
+                self.assertEqual(children,[])
+                self.assertEqual(struct.unpack('<I',props[b'reg'])[0],i)
+                self.assertEqual(struct.unpack('<I',props[b'cpu-id'])[0],i)
+                self.assertEqual(props[b'state'],b'running\0' if i==0 else b'stopped\0')
+
     def test_development_preboot_namespace_is_in_chosen(self):
         buf = ctypes.create_string_buffer(16384)
         size = self.lib.xnu_make_adt(buf, len(buf), ctypes.create_string_buffer(payload()), 13000000)

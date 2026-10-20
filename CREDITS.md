@@ -55,3 +55,5 @@ A04BR3 uses its real 800x1280 geometry and explicit 1:1 logical scale.
 The full-root chosen UUID inputs and crypto-hash-method follow ios-sweet
 bring-up notes and XNU IOPlatformExpertDevice::generatePlatformUUID. The
 fixed development namespace is A04BR3/MT8167 and is not an Apple device ECID.
+
+The opt-in two/four CPU ADT follows the MT8167/MT8516 Linux DTS physical Aff0 0..3 topology. SMP sequencing reference is ios-sweet patch0065 at the revision credited above; one CPU remains the default.

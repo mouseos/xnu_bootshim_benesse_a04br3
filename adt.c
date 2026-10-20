@@ -108,14 +108,20 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
         prop(&w, "lp-sip0", &filesystem_development, 8);
         word(&w, "lp-sip1", 1); /* explicit unauthenticated development root */
     }
-    node(&w, 3, 1);
+    /* Physical Aff0 0..3, one homogeneous MT8167 A35 cluster.
+     * Expose only the explicitly requested development topology. */
+    unsigned cpus = command_flag(p, "cpus=4") ? 4 : command_flag(p, "cpus=2") ? 2 : 1;
+    node(&w, 3, cpus);
     text(&w, "name", "cpus"); word(&w, "#address-cells", 1); word(&w, "#size-cells", 0);
-    node(&w, 8, 0);
-    text(&w, "name", "cpu0"); text(&w, "device_type", "cpu");
-    static const char cpu[] = "arm,cortex-a35\0ARM,v8";
-    prop(&w, "compatible", cpu, sizeof(cpu)); word(&w, "reg", 0);
-    text(&w, "state", "running"); word(&w, "timebase-frequency", timebase);
-    word(&w, "cpu-id", 0); word(&w, "cluster-id", 0);
+    static const char compatible_cpu[] = "arm,cortex-a35\0ARM,v8";
+    for (unsigned i = 0; i < cpus; i++) {
+        char name[] = "cpu0"; name[3] += i;
+        node(&w, 8, 0);
+        text(&w, "name", name); text(&w, "device_type", "cpu");
+        prop(&w, "compatible", compatible_cpu, sizeof(compatible_cpu)); word(&w, "reg", i);
+        text(&w, "state", i ? "stopped" : "running"); word(&w, "timebase-frequency", timebase);
+        word(&w, "cpu-id", i); word(&w, "cluster-id", 0);
+    }
     node(&w, 6, 2 + display);
     text(&w, "name", "arm-io"); text(&w, "device_type", "soc");
     text(&w, "compatible", "mediatek,mt8167");
