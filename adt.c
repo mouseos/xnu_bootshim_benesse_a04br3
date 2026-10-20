@@ -39,6 +39,19 @@ static void word(struct writer *w, const char *key, uint32_t value)
 {
     prop(w, key, &value, sizeof(value));
 }
+/* Full donor copies do not expose native BSD rootless flags via Linux stat. */
+static int full_root_mode(const struct xnu_payload *p)
+{
+    static const char flag[] = "a04br3.full_root=1";
+    for (unsigned i=0;i+sizeof(flag)<=sizeof(p->command_line);i++) {
+        if (!p->command_line[i]) break;
+        if (i && p->command_line[i-1]!=' ') continue;
+        unsigned j=0;
+        while (flag[j] && flag[j]==p->command_line[i+j]) j++;
+        if (!flag[j] && (!p->command_line[i+j] || p->command_line[i+j]==' ')) return 1;
+    }
+    return 0;
+}
 size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_payload *p,
                            uint32_t timebase, const unsigned char *seed, size_t seed_bytes)
 {
@@ -52,7 +65,8 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "compatible", compatible, sizeof(compatible));
     text(&w, "model", "Benesse TAB-A04-BR3");
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
-    node(&w, 5 + (seed_bytes != 0), 1);
+    int full_root=full_root_mode(p);
+    node(&w, 5 + (seed_bytes != 0), 1 + full_root);
     text(&w, "name", "chosen");
     /* SHA-384("A04BR3 development boot namespace v1"). This names the
      * unsealed development preboot namespace; it is not Apple secure boot.
@@ -71,6 +85,12 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
         const struct xnu_segment *rd = &segments[p->segment_count - 1];
         uint64_t ramdisk[2] = {rd->physical, rd->memory_size};
         prop(&w, "RAMDisk", ramdisk, sizeof(ramdisk));
+    }
+    if (full_root) {
+        node(&w, 3, 0);text(&w, "name", "asmb");
+        uint64_t filesystem_development=2; /* CSR_ALLOW_UNRESTRICTED_FS only. */
+        prop(&w, "lp-sip0", &filesystem_development, 8);
+        word(&w, "lp-sip1", 1); /* explicit unauthenticated development root */
     }
     node(&w, 3, 1);
     text(&w, "name", "cpus"); word(&w, "#address-cells", 1); word(&w, "#size-cells", 0);

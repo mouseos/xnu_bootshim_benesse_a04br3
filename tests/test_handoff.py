@@ -77,6 +77,17 @@ class HandoffTests(unittest.TestCase):
         chosen = next(props for props,_ in tree[1] if props[b'name'] == b'chosen\0')
         self.assertEqual(chosen[b'boot-manifest-hash'], hashlib.sha384(b'A04BR3 development boot namespace v1').digest())
 
+    def test_full_donor_filesystem_relaxation_is_explicit(self):
+        for args, expected in ((b'-v',False),(b'-v a04br3.full_root=1',True),(b'a04br3.full_root=10',False)):
+            blob=bytearray(payload());blob[80:688]=args.ljust(608,b'\0')
+            buf=ctypes.create_string_buffer(16384)
+            size=self.lib.xnu_make_adt(buf,len(buf),ctypes.create_string_buffer(bytes(blob)),13000000)
+            data=buf.raw[:size]
+            self.assertEqual(b'lp-sip0' in data,expected)
+            if expected:
+                at=data.index(b'lp-sip0');self.assertEqual(struct.unpack_from('<IQ',data,at+32),(8,2))
+                at=data.index(b'lp-sip1');self.assertEqual(struct.unpack_from('<II',data,at+32),(4,1))
+
     def test_plan_and_boot_args_reservation(self):
         result, plan = self.validate(payload())
         self.assertEqual(result, 0)

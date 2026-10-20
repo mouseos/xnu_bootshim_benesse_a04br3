@@ -24,3 +24,8 @@ a synthetic seed.
 The development /chosen/boot-manifest-hash namespace follows the mount
 requirement documented by ios-sweet 0036 at fdad0de8dc0e75c5ea84762adc03f7232dc91f19.
 The value is A04BR3-specific synthetic development data, not an Apple manifest.
+
+Full donor roots use the explicit a04br3.full_root=1 development mode to
+set only CSR_ALLOW_UNRESTRICTED_FS and the unauthenticated-root policy,
+following the shared-cache condition documented in ios-sweet 0032. Linux
+FUSE stat cannot preserve the donor native BSD SF_RESTRICTED inode flag.
