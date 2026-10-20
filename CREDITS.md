@@ -35,3 +35,10 @@ RAM 40000000..80000000 and 80000000..be9c0000. The managed interval
 60000000..be000000 spans adjacent banks and excludes every reported
 reservation. Payload is loaded below this interval. Gaps, overlap with
 reservations and overlap with firmware payloads still reject the handoff.
+
+The opt-in LK display probe uses the 800x1280, 3200-byte stride,
+0xbe9c0000 three-page scanout layout from mouseos/edk2-mtk A04BR3
+DisplayInitDxe and a04br3.dsc in the existing local EDK2 port. It only
+writes a 24-row RGB marker inside the FDT-reserved framebuffer and supplies
+Apple boot_args Video; it does not initialize DSI, implement IOSurface or
+claim SpringBoard output.

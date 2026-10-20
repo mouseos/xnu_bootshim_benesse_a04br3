@@ -42,6 +42,7 @@ size_t xnu_make_adt(void *buffer, size_t capacity, const struct xnu_payload *pay
                     uint32_t timebase);
 size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_payload *payload,
                            uint32_t timebase, const unsigned char *seed, size_t seed_bytes);
+int handoff_video_setup(struct xnu_video *, const struct fdt_info *, const struct xnu_payload *);
 int mt8167_random_seed(unsigned char seed[64], uint32_t timebase);
 const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa);
 #endif
