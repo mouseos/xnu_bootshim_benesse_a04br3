@@ -40,10 +40,11 @@ static void word(struct writer *w, const char *key, uint32_t value)
     prop(w, key, &value, sizeof(value));
 }
 /* Full donor copies do not expose native BSD rootless flags via Linux stat. */
-static int full_root_mode(const struct xnu_payload *p)
+static int command_flag(const struct xnu_payload *p, const char *flag)
 {
-    static const char flag[] = "a04br3.full_root=1";
-    for (unsigned i=0;i+sizeof(flag)<=sizeof(p->command_line);i++) {
+    unsigned length=0;
+    while (flag[length]) length++;
+    for (unsigned i=0;i+length<sizeof(p->command_line);i++) {
         if (!p->command_line[i]) break;
         if (i && p->command_line[i-1]!=' ') continue;
         unsigned j=0;
@@ -65,7 +66,8 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "compatible", compatible, sizeof(compatible));
     text(&w, "model", "Benesse TAB-A04-BR3");
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
-    int full_root=full_root_mode(p);
+    int full_root=command_flag(p, "a04br3.full_root=1");
+    int display=command_flag(p, "a04br3.display_probe=1");
     node(&w, 5 + (seed_bytes != 0), 1 + full_root);
     text(&w, "name", "chosen");
     /* SHA-384("A04BR3 development boot namespace v1"). This names the
@@ -100,7 +102,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "compatible", cpu, sizeof(cpu)); word(&w, "reg", 0);
     text(&w, "state", "running"); word(&w, "timebase-frequency", timebase);
     word(&w, "cpu-id", 0); word(&w, "cluster-id", 0);
-    node(&w, 6, 2);
+    node(&w, 6, 2 + display);
     text(&w, "name", "arm-io"); text(&w, "device_type", "soc");
     text(&w, "compatible", "mediatek,mt8167");
     uint64_t io_ranges[3] = {0, 0x10000000, 0x10000000};
@@ -117,6 +119,16 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     uint64_t gic[4] = {0x00310000, 0x1000, 0x0032f000, 0x2000};
     prop(&w, "reg", gic, sizeof(gic));
     word(&w, "virtual-timer-intid", 27);
+    /* Native IOMobileFramebuffer enumerates display-subsystem children in
+     * IODeviceTree:/arm-io before looking up framebuffer services. See
+     * ios-sweet 0046. Publishing an IOService alone is insufficient. */
+    if (display) {
+        node(&w, 4, 0);
+        text(&w, "name", "disp0");
+        text(&w, "device_type", "display-subsystem");
+        word(&w, "canvas-width", 800);
+        word(&w, "canvas-height", 1280);
+    }
     /* pmap_compute_max_asids requires /defaults. An absent override selects
      * XNU's MAX_ASIDS, so do not invent a board-specific ASID count. */
     node(&w, 2, 0);

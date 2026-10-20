@@ -77,6 +77,34 @@ class HandoffTests(unittest.TestCase):
         chosen = next(props for props,_ in tree[1] if props[b'name'] == b'chosen\0')
         self.assertEqual(chosen[b'boot-manifest-hash'], hashlib.sha384(b'A04BR3 development boot namespace v1').digest())
 
+    def test_native_display_tree_is_opt_in(self):
+        for args, expected in ((b'-v',False),(b'a04br3.display_probe=1',True),
+                               (b'a04br3.display_probe=10',False),
+                               (b'xa04br3.display_probe=1',False)):
+            blob=bytearray(payload());blob[80:688]=args.ljust(608,b'\0')
+            buf=ctypes.create_string_buffer(16384)
+            size=self.lib.xnu_make_adt(buf,len(buf),ctypes.create_string_buffer(bytes(blob)),13000000)
+            data=buf.raw[:size]
+            def read_node(offset):
+                n,c=struct.unpack_from('<II',data,offset);offset+=8;props={}
+                for _ in range(n):
+                    key=data[offset:offset+32].split(b'\0')[0]
+                    length=struct.unpack_from('<I',data,offset+32)[0];offset+=36
+                    props[key]=data[offset:offset+length];offset+=(length+3)&~3
+                children=[]
+                for _ in range(c):
+                    child,offset=read_node(offset);children.append(child)
+                return (props,children),offset
+            tree,end=read_node(0);self.assertEqual(end,size)
+            arm=next(n for n in tree[1] if n[0][b'name']==b'arm-io\0')
+            displays=[n for n in arm[1] if n[0].get(b'device_type')==b'display-subsystem\0']
+            self.assertEqual(len(displays),int(expected))
+            if expected:
+                props=displays[0][0]
+                self.assertEqual(props[b'name'],b'disp0\0')
+                self.assertEqual(struct.unpack('<I',props[b'canvas-width'])[0],800)
+                self.assertEqual(struct.unpack('<I',props[b'canvas-height'])[0],1280)
+
     def test_full_donor_filesystem_relaxation_is_explicit(self):
         for args, expected in ((b'-v',False),(b'-v a04br3.full_root=1',True),(b'a04br3.full_root=10',False)):
             blob=bytearray(payload());blob[80:688]=args.ljust(608,b'\0')
