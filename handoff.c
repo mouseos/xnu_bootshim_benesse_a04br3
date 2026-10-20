@@ -120,6 +120,9 @@ const char *handoff_boot(const struct fdt_info *fdt, uint64_t fdt_pa)
                                         (uint32_t)timebase, seed, sizeof(seed));
     zero_bytes((uintptr_t)seed, sizeof(seed));
     if (!adt_size) return "XNU_ADT_BUILD_FAILED";
+    handoff_message("XNU_BOOT_ARGS ");
+    handoff_message(p->command_line);
+    handoff_message("\n");
     handoff_trace("XNU_physBase", p->phys_base);
     handoff_trace("XNU_memSize", p->mem_size);
     handoff_trace("XNU_entryPA", plan.entry_pa);
