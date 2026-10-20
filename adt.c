@@ -68,7 +68,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
     int full_root=command_flag(p, "a04br3.full_root=1");
     int display=command_flag(p, "a04br3.display_probe=1");
-    node(&w, 5 + (seed_bytes != 0), 1 + full_root);
+    node(&w, 5 + (seed_bytes != 0) + 2 * display, 1 + full_root);
     text(&w, "name", "chosen");
     /* SHA-384("A04BR3 development boot namespace v1"). This names the
      * unsealed development preboot namespace; it is not Apple secure boot.
@@ -79,6 +79,12 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     prop(&w, "dram-base", &p->phys_base, 8);
     prop(&w, "dram-size", &p->mem_size, 8);
     word(&w, "debug-enabled", 1);
+    if (display) {
+        /* Explicit 1:1 logical pixels; absent scale defaults to zero in
+         * MobileGestalt and yields an invalid FBSDisplayMode. ios-sweet notes. */
+        word(&w, "display-scale", 1);
+        word(&w, "display-rotation", 0);
+    }
     node(&w, 2 + (p->version >= 2), 0);
     text(&w, "name", "memory-map"); prop(&w, "Kernel-A04BR3", range, sizeof(range));
     /* v2's final validated load segment is the root memory device. */

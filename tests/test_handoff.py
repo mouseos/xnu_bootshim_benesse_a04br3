@@ -96,6 +96,11 @@ class HandoffTests(unittest.TestCase):
                     child,offset=read_node(offset);children.append(child)
                 return (props,children),offset
             tree,end=read_node(0);self.assertEqual(end,size)
+            chosen=next(n[0] for n in tree[1] if n[0][b'name']==b'chosen\0')
+            self.assertEqual(b'display-scale' in chosen,expected)
+            if expected:
+                self.assertEqual(struct.unpack('<I',chosen[b'display-scale'])[0],1)
+                self.assertEqual(struct.unpack('<I',chosen[b'display-rotation'])[0],0)
             arm=next(n for n in tree[1] if n[0][b'name']==b'arm-io\0')
             displays=[n for n in arm[1] if n[0].get(b'device_type')==b'display-subsystem\0']
             self.assertEqual(len(displays),int(expected))

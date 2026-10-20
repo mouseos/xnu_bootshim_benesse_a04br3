@@ -46,3 +46,8 @@ claim SpringBoard output.
 Correction after reading SimpleFbDxe: PcdMipiFrameBufferLayers=3 is
 an inclusive upper index (four surfaces); every diagnostic color now
 has alpha=0xff. The reserved extent validation covers all four surfaces.
+
+Native display enumeration and chosen display-scale/rotation metadata follow
+the ios-sweet 0046 source and bring-up notes at
+fdad0de8dc0e75c5ea84762adc03f7232dc91f19 (dipa-studio/ios-sweet).
+A04BR3 uses its real 800x1280 geometry and explicit 1:1 logical scale.
