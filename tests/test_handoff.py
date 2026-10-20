@@ -88,6 +88,19 @@ class HandoffTests(unittest.TestCase):
                 at=data.index(b'lp-sip0');self.assertEqual(struct.unpack_from('<IQ',data,at+32),(8,2))
                 at=data.index(b'lp-sip1');self.assertEqual(struct.unpack_from('<II',data,at+32),(4,1))
 
+    def test_full_root_memory_spans_adjacent_real_fdt_banks_only(self):
+        blob=bytearray(payload());struct.pack_into('<Q',blob,32,0x5e000000)
+        f=self.fdt();f.memory_count=2
+        f.memory[0].base=0x40000000;f.memory[0].size=0x40000000
+        f.memory[1].base=0x80000000;f.memory[1].size=0x3e9c0000
+        f.reserved_count=2;f.reserved[1].base=0xbe9c0000;f.reserved[1].size=0x1000000
+        self.assertEqual(self.validate(bytes(blob),f)[0],0)
+        f.memory[1].base+=0x4000;f.memory[1].size-=0x4000
+        self.assertNotEqual(self.validate(bytes(blob),f)[0],0)
+        f.memory[1].base=0x80000000;f.memory[1].size=0x3e9c0000
+        f.reserved[1].base=0xa0000000
+        self.assertNotEqual(self.validate(bytes(blob),f)[0],0)
+
     def test_plan_and_boot_args_reservation(self):
         result, plan = self.validate(payload())
         self.assertEqual(result, 0)

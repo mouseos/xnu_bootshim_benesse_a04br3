@@ -29,3 +29,9 @@ Full donor roots use the explicit a04br3.full_root=1 development mode to
 set only CSR_ALLOW_UNRESTRICTED_FS and the unauthenticated-root policy,
 following the shared-cache condition documented in ios-sweet 0032. Linux
 FUSE stat cannot preserve the donor native BSD SF_RESTRICTED inode flag.
+
+Full-root memory profile is derived from A04BR3 hardware FDT observations:
+RAM 40000000..80000000 and 80000000..be9c0000. The managed interval
+60000000..be000000 spans adjacent banks and excludes every reported
+reservation. Payload is loaded below this interval. Gaps, overlap with
+reservations and overlap with firmware payloads still reject the handoff.

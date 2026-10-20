@@ -18,8 +18,20 @@ static int overlap(uint64_t a, uint64_t n, uint64_t b, uint64_t m)
 }
 static int covered(uint64_t start, uint64_t size, const struct fdt_info *fdt)
 {
-    for (unsigned i = 0; i < fdt->memory_count; i++)
-        if (inside(start, size, fdt->memory[i].base, fdt->memory[i].size)) return 1;
+    if (!size || start+size<start) return 0;
+    uint64_t cursor=start,end=start+size;
+    /* Adjacent FDT banks may form one contiguous managed interval. */
+    for (unsigned pass=0;pass<fdt->memory_count;pass++) {
+        uint64_t next=cursor;
+        for (unsigned i=0;i<fdt->memory_count;i++) {
+            uint64_t base=fdt->memory[i].base,limit=base+fdt->memory[i].size;
+            if (limit<base) continue;
+            if (base<=cursor && limit>next) next=limit;
+        }
+        if (next==cursor) return 0;
+        if (next>=end) return 1;
+        cursor=next;
+    }
     return 0;
 }
 /* Version 3 stores only the final RAMDisk as bounded literal/zero runs.
@@ -65,7 +77,7 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
         p->data_offset < p->segments_offset + p->segment_count * sizeof(struct xnu_segment) ||
         p->data_offset > length || (p->data_offset & 7) ||
         (p->virt_base & 0x1ffffff) || (p->phys_base & 0x1ffffff) ||
-        !p->mem_size || p->mem_size > 0x40000000 || (p->mem_size & (XNU_PAGE - 1)) ||
+        !p->mem_size || p->mem_size > 0x60000000 || (p->mem_size & (XNU_PAGE - 1)) ||
         p->virt_base < 0xffffff8000000000ULL || p->virt_base + p->mem_size < p->virt_base ||
         !covered(p->phys_base, p->mem_size, fdt) ||
         !covered(payload_pa, length, fdt) ||
