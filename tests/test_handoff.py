@@ -117,6 +117,14 @@ class HandoffTests(unittest.TestCase):
             size=self.lib.xnu_make_adt(buf,len(buf),ctypes.create_string_buffer(bytes(blob)),13000000)
             data=buf.raw[:size]
             self.assertEqual(b'lp-sip0' in data,expected)
+            self.assertEqual(b'unique-chip-id' in data,expected)
+            self.assertEqual(b'crypto-hash-method' in data,expected)
+            if expected:
+                at=data.index(b'unique-chip-id')
+                self.assertEqual(struct.unpack_from('<IQ',data,at+32),(8,0x4130344252330001))
+                at=data.index(b'chip-id'.ljust(32,b'\0'))
+                self.assertEqual(struct.unpack_from('<II',data,at+32),(4,0x8167))
+
             if expected:
                 at=data.index(b'lp-sip0');self.assertEqual(struct.unpack_from('<IQ',data,at+32),(8,2))
                 at=data.index(b'lp-sip1');self.assertEqual(struct.unpack_from('<II',data,at+32),(4,1))

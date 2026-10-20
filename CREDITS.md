@@ -51,3 +51,7 @@ Native display enumeration and chosen display-scale/rotation metadata follow
 the ios-sweet 0046 source and bring-up notes at
 fdad0de8dc0e75c5ea84762adc03f7232dc91f19 (dipa-studio/ios-sweet).
 A04BR3 uses its real 800x1280 geometry and explicit 1:1 logical scale.
+
+The full-root chosen UUID inputs and crypto-hash-method follow ios-sweet
+bring-up notes and XNU IOPlatformExpertDevice::generatePlatformUUID. The
+fixed development namespace is A04BR3/MT8167 and is not an Apple device ECID.
