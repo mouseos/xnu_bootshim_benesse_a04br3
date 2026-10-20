@@ -99,8 +99,10 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     word(&w, "virtual-timer-intid", 27);
     /* pmap_compute_max_asids requires /defaults. An absent override selects
      * XNU's MAX_ASIDS, so do not invent a board-specific ASID count. */
-    node(&w, 1, 0);
+    node(&w, 2, 0);
     text(&w, "name", "defaults");
+    /* This board has no Apple effaceable-storage hardware. */
+    word(&w, "no-effaceable-storage", 1);
     return w.error ? 0 : w.used;
 }
 
