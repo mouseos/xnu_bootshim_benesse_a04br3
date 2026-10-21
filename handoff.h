@@ -26,7 +26,8 @@ _Static_assert(offsetof(struct xnu_boot_args, command_line) == 108, "XNU cmdline
 struct xnu_payload {
     char magic[8];
     /* v1 kernel; v2 raw/v3 sparse root RAMDisk; v4 raw GPU firmware tail.
-     * v4's final segment is a non-entry asset, not a RAMDisk. */
+     * v4's final segment is a non-entry asset, not a RAMDisk.
+     * v5 has exactly two non-entry tails: WMT then GPU (GPU remains last). */
     uint32_t version, segment_count;
     uint64_t virt_base, phys_base, mem_size, entry_va, kernel_end_pa;
     uint64_t segments_offset, data_offset, total_size;

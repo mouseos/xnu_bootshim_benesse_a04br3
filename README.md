@@ -83,3 +83,15 @@ runs carry that many following bytes. The entire stream must decode to the
 segment memory size before the loader writes any destination. Kernel
 segments keep their version 1 layout. This stores sparse HFS volumes within
 the existing boot partition without modifying GPT.
+
+Version 5 adds exactly two raw tail segments after all kernel segments: WMT
+then GPU. It requires a single `rd=emmcroot0` selector and forbids RAMDisk
+interpretation. Both assets start on 16KiB boundaries, use exact rounded
+reservations, are excluded from entry selection, and must form a contiguous
+physical tail below 4GiB. Their source offsets must immediately follow the
+kernel and each other with eight-byte file padding, with no extra tail bytes.
+GPU remains last, preserving the v4 kernel GPU reservation invariant. ADT
+publishes actual lengths as `WMTFirmware-A04BR3` and `GPUFirmware-A04BR3` under
+`/chosen/memory-map`. The shim treats these as opaque bounded assets; the
+source device packer and kernel WMT parser validate the A04WMT1 contents.
+Formats v1 through v4 are unchanged.

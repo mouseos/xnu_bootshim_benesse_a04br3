@@ -94,8 +94,8 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
     const struct xnu_payload *p = payload;
     static const char magic[] = "A04XNU01";
     for (unsigned i = 0; i < 8; i++) if (p->magic[i] != magic[i]) return -1;
-    if ((p->version != 1 && p->version != 2 && p->version != 3 && p->version != 4) ||
-        (p->version >= 2 && p->segment_count < 2) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
+    if ((p->version != 1 && p->version != 2 && p->version != 3 && p->version != 4 && p->version != 5) ||
+        (p->version >= 2 && p->segment_count < 2) || (p->version == 5 && p->segment_count < 3) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
         p->total_size != length || p->segments_offset < sizeof(*p) ||
         (p->segments_offset & 7) || p->segments_offset > length ||
         p->segment_count * sizeof(struct xnu_segment) > length - p->segments_offset ||
@@ -164,6 +164,48 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
                 roots++;
             }
             if (at < XNU_CMDLINE && p->command_line[at] == ' ') at++;
+        }
+        if (roots != 1) return -1;
+    }
+    if (p->version == 5) {
+        /* Exactly two raw assets form both the physical and source-file tail. */
+        const struct xnu_segment *wmt = &segments[p->segment_count - 2];
+        const struct xnu_segment *gpu = &segments[p->segment_count - 1];
+        uint64_t kernel_end = p->phys_base, source_end = p->data_offset;
+        for (unsigned i = 0; i + 2 < p->segment_count; i++) {
+            const struct xnu_segment *s = &segments[i];
+            if (s->physical + s->memory_size > kernel_end) kernel_end = s->physical + s->memory_size;
+            if (s->file_offset != ((source_end+7)&~7ULL)) return -1;
+            source_end = s->file_offset + s->file_size;
+        }
+        if (wmt->physical != aligned(kernel_end) || (wmt->physical & (XNU_PAGE-1)) ||
+            wmt->file_size < 32 || wmt->file_size > 32UL*1024*1024 ||
+            wmt->memory_size != aligned(wmt->file_size) ||
+            gpu->physical != wmt->physical + wmt->memory_size ||
+            gpu->file_size <= 4096 || gpu->file_size > 32UL*1024*1024 ||
+            gpu->memory_size != aligned(gpu->file_size) ||
+            gpu->physical + gpu->memory_size > 0x100000000ULL ||
+            wmt->file_offset != ((source_end+7)&~7ULL) ||
+            gpu->file_offset != wmt->file_offset + ((wmt->file_size+7)&~7ULL) ||
+            gpu->file_offset + ((gpu->file_size+7)&~7ULL) != length ||
+            inside(plan->entry_pa,4,wmt->physical,wmt->memory_size) ||
+            inside(plan->entry_pa,4,gpu->physical,gpu->memory_size)) return -1;
+        unsigned roots = 0;
+        for (unsigned at = 0; at < XNU_CMDLINE && p->command_line[at];) {
+            unsigned start = at;
+            while (at < XNU_CMDLINE && p->command_line[at] && p->command_line[at] != ' ') {
+                char c = p->command_line[at];
+                if (c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f') return -1;
+                at++;
+            }
+            unsigned n = at-start;
+            if (n >= 3 && p->command_line[start]=='r' && p->command_line[start+1]=='d' && p->command_line[start+2]=='=') {
+                static const char root[] = "rd=emmcroot0";
+                if (n != sizeof(root)-1) return -1;
+                for (unsigned j=0;j<n;j++) if (p->command_line[start+j]!=root[j]) return -1;
+                roots++;
+            }
+            if (at<XNU_CMDLINE && p->command_line[at]==' ') at++;
         }
         if (roots != 1) return -1;
     }
