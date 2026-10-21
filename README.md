@@ -95,3 +95,11 @@ publishes actual lengths as `WMTFirmware-A04BR3` and `GPUFirmware-A04BR3` under
 `/chosen/memory-map`. The shim treats these as opaque bounded assets; the
 source device packer and kernel WMT parser validate the A04WMT1 contents.
 Formats v1 through v4 are unchanged.
+
+
+Payload v6 extends the explicit eMMC-root asset tail to WLAN, WMT, GPU. All
+three must occupy consecutive 16KiB-rounded physical reservations after the
+kernel, with exact padded source ranges, no entry point in any asset, and no
+extra trailer. WLAN input is bounded to 16MiB; WMT/GPU retain their previous
+bounds. `WLANFirmware-A04BR3` publishes the actual WLAN byte count. This is an
+opaque boot asset, never a RAMDisk or a claim of device firmware execution.

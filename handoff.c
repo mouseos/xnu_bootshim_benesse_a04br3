@@ -94,8 +94,8 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
     const struct xnu_payload *p = payload;
     static const char magic[] = "A04XNU01";
     for (unsigned i = 0; i < 8; i++) if (p->magic[i] != magic[i]) return -1;
-    if ((p->version != 1 && p->version != 2 && p->version != 3 && p->version != 4 && p->version != 5) ||
-        (p->version >= 2 && p->segment_count < 2) || (p->version == 5 && p->segment_count < 3) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
+    if ((p->version != 1 && p->version != 2 && p->version != 3 && p->version != 4 && p->version != 5 && p->version != 6) ||
+        (p->version >= 2 && p->segment_count < 2) || (p->version == 5 && p->segment_count < 3) || (p->version == 6 && p->segment_count < 4) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
         p->total_size != length || p->segments_offset < sizeof(*p) ||
         (p->segments_offset & 7) || p->segments_offset > length ||
         p->segment_count * sizeof(struct xnu_segment) > length - p->segments_offset ||
@@ -167,16 +167,28 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
         }
         if (roots != 1) return -1;
     }
-    if (p->version == 5) {
-        /* Exactly two raw assets form both the physical and source-file tail. */
+    if (p->version == 5 || p->version == 6) {
+        /* Two or three raw assets form both the physical and source-file tail. */
         const struct xnu_segment *wmt = &segments[p->segment_count - 2];
         const struct xnu_segment *gpu = &segments[p->segment_count - 1];
+        unsigned assets = p->version == 6 ? 3 : 2;
         uint64_t kernel_end = p->phys_base, source_end = p->data_offset;
-        for (unsigned i = 0; i + 2 < p->segment_count; i++) {
+        for (unsigned i = 0; i + assets < p->segment_count; i++) {
             const struct xnu_segment *s = &segments[i];
             if (s->physical + s->memory_size > kernel_end) kernel_end = s->physical + s->memory_size;
             if (s->file_offset != ((source_end+7)&~7ULL)) return -1;
             source_end = s->file_offset + s->file_size;
+        }
+        if (p->version == 6) {
+            const struct xnu_segment *wlan = &segments[p->segment_count - 3];
+            if (wlan->physical != aligned(kernel_end) ||
+                (wlan->physical & (XNU_PAGE-1)) || wlan->file_size < 32 ||
+                wlan->file_size > 16UL*1024*1024 ||
+                wlan->memory_size != aligned(wlan->file_size) ||
+                wlan->file_offset != ((source_end+7)&~7ULL) ||
+                inside(plan->entry_pa,4,wlan->physical,wlan->memory_size)) return -1;
+            kernel_end = wlan->physical + wlan->memory_size;
+            source_end = wlan->file_offset + wlan->file_size;
         }
         if (wmt->physical != aligned(kernel_end) || (wmt->physical & (XNU_PAGE-1)) ||
             wmt->file_size < 32 || wmt->file_size > 32UL*1024*1024 ||
