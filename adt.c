@@ -140,7 +140,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
         text(&w, "state", i ? "stopped" : "running"); word(&w, "timebase-frequency", timebase);
         word(&w, "cpu-id", i); word(&w, "cluster-id", 0);
     }
-    node(&w, 6, 2 + display);
+    node(&w, 6, 2 + display + (p->version == 6));
     text(&w, "name", "arm-io"); text(&w, "device_type", "soc");
     text(&w, "compatible", "mediatek,mt8167");
     uint64_t io_ranges[3] = {0, 0x10000000, 0x10000000};
@@ -157,6 +157,21 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     uint64_t gic[4] = {0x00310000, 0x1000, 0x0032f000, 0x2000};
     prop(&w, "reg", gic, sizeof(gic));
     word(&w, "virtual-timer-intid", 27);
+    /* Physical MT6630 function1 on MSDC2, present in the WLAN payload profile.
+     * Native wifid limits loading to a real wlan device-tree entry. Keep the
+     * MTK transport identity; no Apple chip ID, MAC or ready state is supplied.
+     * This logical SDIO peripheral has no independent CPU MMIO register range.
+     */
+    if (p->version == 6) {
+        node(&w, 6, 0);
+        text(&w, "name", "wlan");
+        text(&w, "device_type", "network");
+        text(&w, "compatible", "mediatek,mt6630-wlan");
+        text(&w, "transport", "sdio");
+        word(&w, "sdio-function", 1);
+        uint64_t host = 0x11170000;
+        prop(&w, "sdio-host-address", &host, sizeof(host));
+    }
     /* Native IOMobileFramebuffer enumerates display-subsystem children in
      * IODeviceTree:/arm-io before looking up framebuffer services. See
      * ios-sweet 0046. Publishing an IOService alone is insufficient. */

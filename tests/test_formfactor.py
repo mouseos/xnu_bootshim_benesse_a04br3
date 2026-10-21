@@ -47,6 +47,7 @@ class FormFactorTests(unittest.TestCase):
             self.assertEqual(root[b"device_type"], b"device-tree\0")
             # UI product is published by the expert, not by replacing the board.
             self.assertNotIn(b"iPad", buffer.raw[:size])
+            self.assertNotIn(b"mt6630-wlan", buffer.raw[:size])
 
 
 if __name__ == "__main__":

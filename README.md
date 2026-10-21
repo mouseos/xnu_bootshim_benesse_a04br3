@@ -103,3 +103,9 @@ kernel, with exact padded source ranges, no entry point in any asset, and no
 extra trailer. WLAN input is bounded to 16MiB; WMT/GPU retain their previous
 bounds. `WLANFirmware-A04BR3` publishes the actual WLAN byte count. This is an
 opaque boot asset, never a RAMDisk or a claim of device firmware execution.
+
+The v6 WLAN profile also describes the physical MT6630 SDIO function1 as
+`/arm-io/wlan`, with MTK compatible identity and MSDC2 host address. Native
+wifid uses device-tree presence as a launch prerequisite. This descriptor
+contains no MAC, calibration bytes or firmware-ready/connected claim. Earlier
+payload profiles do not publish the WLAN entry.
