@@ -96,11 +96,17 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     node(&w, 2 + (p->version >= 2), 0);
     text(&w, "name", "memory-map"); prop(&w, "Kernel-A04BR3", range, sizeof(range));
     /* v2's final validated load segment is the root memory device. */
-    if (p->version >= 2) {
+    if (p->version == 2 || p->version == 3) {
         const struct xnu_segment *segments = (const void *)((const unsigned char *)p + p->segments_offset);
         const struct xnu_segment *rd = &segments[p->segment_count - 1];
         uint64_t ramdisk[2] = {rd->physical, rd->memory_size};
         prop(&w, "RAMDisk", ramdisk, sizeof(ramdisk));
+    }
+    if (p->version == 4) {
+        const struct xnu_segment *segments = (const void *)((const unsigned char *)p + p->segments_offset);
+        const struct xnu_segment *fw = &segments[p->segment_count - 1];
+        uint64_t firmware[2] = {fw->physical, fw->file_size};
+        prop(&w, "GPUFirmware-A04BR3", firmware, sizeof(firmware));
     }
     if (full_root) {
         node(&w, 3, 0);text(&w, "name", "asmb");

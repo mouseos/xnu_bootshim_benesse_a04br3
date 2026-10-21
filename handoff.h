@@ -25,6 +25,8 @@ _Static_assert(offsetof(struct xnu_boot_args, device_tree) == 96, "XNU ADT point
 _Static_assert(offsetof(struct xnu_boot_args, command_line) == 108, "XNU cmdline ABI");
 struct xnu_payload {
     char magic[8];
+    /* v1 kernel; v2 raw/v3 sparse root RAMDisk; v4 raw GPU firmware tail.
+     * v4's final segment is a non-entry asset, not a RAMDisk. */
     uint32_t version, segment_count;
     uint64_t virt_base, phys_base, mem_size, entry_va, kernel_end_pa;
     uint64_t segments_offset, data_offset, total_size;

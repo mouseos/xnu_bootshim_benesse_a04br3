@@ -94,7 +94,7 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
     const struct xnu_payload *p = payload;
     static const char magic[] = "A04XNU01";
     for (unsigned i = 0; i < 8; i++) if (p->magic[i] != magic[i]) return -1;
-    if ((p->version != 1 && p->version != 2 && p->version != 3) ||
+    if ((p->version != 1 && p->version != 2 && p->version != 3 && p->version != 4) ||
         (p->version >= 2 && p->segment_count < 2) || !p->segment_count || p->segment_count > XNU_MAX_SEGMENTS ||
         p->total_size != length || p->segments_offset < sizeof(*p) ||
         (p->segments_offset & 7) || p->segments_offset > length ||
@@ -134,6 +134,38 @@ int handoff_validate(const void *payload, size_t length, uint64_t payload_pa,
         if ((rd->physical & (XNU_PAGE - 1)) ||
             (rd->memory_size & (XNU_PAGE - 1)) || !rd->file_size ||
             inside(plan->entry_pa, 4, rd->physical, rd->memory_size)) return -1;
+    }
+    if (p->version == 4) {
+        /* v4: exactly one raw non-entry GPU asset after all kernel segments.
+         * Its actual file length is separate from the 16KiB reservation. */
+        const struct xnu_segment *fw = &segments[p->segment_count - 1];
+        uint64_t kernel_end = p->phys_base;
+        for (unsigned i = 0; i + 1 < p->segment_count; i++) {
+            const struct xnu_segment *s = &segments[i];
+            if (s->physical + s->memory_size > kernel_end)
+                kernel_end = s->physical + s->memory_size;
+            if (s->file_offset + s->file_size > fw->file_offset) return -1;
+        }
+        if (fw->physical != aligned(kernel_end) || fw->physical + fw->memory_size > 0x100000000ULL ||
+            fw->file_size <= 4096 ||
+            fw->file_size > 32UL * 1024 * 1024 || fw->memory_size != aligned(fw->file_size) ||
+            fw->file_offset + ((fw->file_size + 7) & ~7ULL) != length) return -1;
+        /* eMMC root only: no ambiguous rd= selector and no RAMDisk alias. */
+        unsigned roots = 0;
+        for (unsigned at = 0; at < XNU_CMDLINE && p->command_line[at];) {
+            unsigned start = at;
+            while (at < XNU_CMDLINE && p->command_line[at] && p->command_line[at] != ' ') at++;
+            unsigned n = at - start;
+            if (n >= 3 && p->command_line[start] == 'r' &&
+                p->command_line[start+1] == 'd' && p->command_line[start+2] == '=') {
+                static const char root[] = "rd=emmcroot0";
+                if (n != sizeof(root)-1) return -1;
+                for (unsigned j = 0; j < n; j++) if (p->command_line[start+j] != root[j]) return -1;
+                roots++;
+            }
+            if (at < XNU_CMDLINE && p->command_line[at] == ' ') at++;
+        }
+        if (roots != 1) return -1;
     }
     if (p->version == 3) {
         const struct xnu_segment *rd = &segments[p->segment_count - 1];
