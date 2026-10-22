@@ -68,7 +68,7 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
     word(&w, "#address-cells", 2); word(&w, "#size-cells", 2);
     int full_root=command_flag(p, "a04br3.full_root=1");
     int display=command_flag(p, "a04br3.display_probe=1");
-    node(&w, 5 + (seed_bytes != 0) + 2 * display + 3 * full_root, 1 + full_root);
+    node(&w, 5 + (seed_bytes != 0) + 2 * display + 7 * full_root, 1 + full_root);
     text(&w, "name", "chosen");
     /* SHA-384("A04BR3 development boot namespace v1"). This names the
      * unsealed development preboot namespace; it is not Apple secure boot.
@@ -82,6 +82,13 @@ size_t xnu_make_adt_seeded(void *buffer, size_t capacity, const struct xnu_paylo
         prop(&w, "unique-chip-id", &development_chip, sizeof(development_chip));
         word(&w, "chip-id", 0x8167);
         text(&w, "crypto-hash-method", "sha2-384");
+        /* Development (non-production, insecure) security status, as in
+         * dipa-studio/ios-sweet tools/mkadt.py: mobileactivationd then takes
+         * its native development activation branch (no SEP or baseband). */
+        word(&w, "certificate-production-status", 0);
+        word(&w, "effective-production-status-ap", 0);
+        word(&w, "certificate-security-mode", 1);
+        word(&w, "effective-security-mode-sep", 1);
     }
     if (seed_bytes) prop(&w, "random-seed", seed, (uint32_t)seed_bytes);
     prop(&w, "dram-base", &p->phys_base, 8);
